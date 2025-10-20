@@ -14,6 +14,7 @@ runs:
       shell: bash
       run: |
         gap -A -q $GITHUB_ACTION_PATH/generate.g
+        cat CITATION-generated.cff
         mv CITATION-generated.cff $RUNNER_TEMP
   
     - name: "Compare CITATION-generated.cff with CITATION-generated.cff"
