@@ -1,0 +1,83 @@
+description: 'Runs the testintall.g or the teststandard.g script to test the GAP installation'
+
+runs:
+  using: "composite"
+  steps:
+
+    - name: "Create CITATION-generated.cff from PackageInfo. "
+      shell: bash
+      run: 
+  
+    - name: "Compare CITATION-generated.cff with CITATION-generated.cff"
+      shell: bash
+      run: |
+        A="CITATION.cff"
+        B="CITATION-generated.cff"
+        
+        # Recursively compare two JSON objects/arrays/scalars
+        recursive_match() {
+          local jsonA="$1"
+          local jsonB="$2"
+        
+          typeB=$(echo "$jsonB" | jq -r 'type')
+          echo "        recursive matching $1 and $2"
+          case "$typeB" in
+            object)
+              keys=$(echo "$jsonB" | jq -r 'keys[]')
+              for k in $keys; do
+                valB=$(echo "$jsonB" | jq -c ".\"$k\"")
+                valA=$(echo "$jsonA" | jq -c ".\"$k\" // empty")
+                recursive_match "$valA" "$valB" || return 1
+              done
+              ;;
+            array)
+              lenB=$(echo "$jsonB" | jq 'length')
+              for i in $(seq 0 $((lenB - 1))); do
+                elemB=$(echo "$jsonB" | jq -c ".[$i]")
+                matched=0
+                lenA=$(echo "$jsonA" | jq 'length')
+                echo "    Trying to find a match for $elemB"
+                for j in $(seq 0 $((lenA - 1))); do
+                  elemA=$(echo "$jsonA" | jq -c ".[$j]")
+                  recursive_match "$elemA" "$elemB" && { matched=1; break; }
+                done
+                if (( matched == 0 )); then
+                  return 1
+                fi
+              done
+              ;;
+            string|number|boolean|null)
+              [[ "$jsonA" == "$jsonB" ]] || return 1
+              ;;
+            *)
+              echo "::error Unknown type: $typeB"
+              return 1
+              ;;
+          esac
+          return 0
+        }
+        
+        # Iterate over all top-level keys in B.yml
+        keys=$(yq '.' "$B" | jq -r 'keys[]')
+        for key in $keys; do
+            # Skip ignored keys
+            [[ "$key" == "cff-version" || "$key" == "message" ]] && continue
+            echo "  Checking $key"
+        
+            # Check key existence in A.yml using has()
+            if ! yq "has(\"$key\")" "$A" | grep -q true; then
+                echo "::error Key '$key' present in $B but missing in $A"
+                exit 1
+            fi
+        
+            valA=$(yq ".\"$key\"" "$A" | jq -c '.')
+            valB=$(yq ".\"$key\"" "$B" | jq -c '.')
+        
+            if ! recursive_match "$valA" "$valB"; then
+                echo "::error Mismatch for key '$key': '$valA' vs '$valB'"
+                exit 1
+            fi
+        done
+        
+        echo "All compared keys match!"
+        exit 1
