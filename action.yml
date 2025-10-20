@@ -4,15 +4,17 @@ runs:
   using: "composite"
   steps:
 
-    - name: "Create CITATION-generated.cff from PackageInfo. "
+    - name: "Create CITATION-generated.cff from PackageInfo.g"
       shell: bash
-      run: 
+      run: |
+        gap -A -q $GITHUB_ACTION_PATH/generate.g
+        mv CITATION-generated.cff $RUNNER_TEMP
   
     - name: "Compare CITATION-generated.cff with CITATION-generated.cff"
       shell: bash
       run: |
         A="CITATION.cff"
-        B="CITATION-generated.cff"
+        B="$RUNNER_TEMP/CITATION-generated.cff"
         
         # Recursively compare two JSON objects/arrays/scalars
         recursive_match() {
@@ -80,4 +82,4 @@ runs:
         done
         
         echo "All compared keys match!"
-        exit 1
+        exit 0
