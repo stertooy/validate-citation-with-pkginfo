@@ -14,22 +14,19 @@ runs:
       shell: bash
       run: |
         gap -A -q $GITHUB_ACTION_PATH/generate.g
-        cat CITATION-generated.cff
         mv CITATION-generated.cff $RUNNER_TEMP
   
-    - name: "Compare CITATION-generated.cff with CITATION-generated.cff"
+    - name: "Compare CITATION.cff with CITATION-generated.cff"
       shell: bash
       run: |
         A="CITATION.cff"
         B="$RUNNER_TEMP/CITATION-generated.cff"
         
-        # Recursively compare two JSON objects/arrays/scalars
         recursive_match() {
           local jsonA="$1"
           local jsonB="$2"
         
           typeB=$(echo "$jsonB" | jq -r 'type')
-          echo "        recursive matching $1 and $2"
           case "$typeB" in
             object)
               keys=$(echo "$jsonB" | jq -r 'keys[]')
@@ -45,7 +42,6 @@ runs:
                 elemB=$(echo "$jsonB" | jq -c ".[$i]")
                 matched=0
                 lenA=$(echo "$jsonA" | jq 'length')
-                echo "    Trying to find a match for $elemB"
                 for j in $(seq 0 $((lenA - 1))); do
                   elemA=$(echo "$jsonA" | jq -c ".[$j]")
                   recursive_match "$elemA" "$elemB" && { matched=1; break; }
@@ -66,14 +62,12 @@ runs:
           return 0
         }
         
-        # Iterate over all top-level keys in B.yml
         keys=$(yq '.' "$B" | jq -r 'keys[]')
         for key in $keys; do
-            # Skip ignored keys
+            # Ignore
             [[ "$key" == "cff-version" || "$key" == "message" ]] && continue
             echo "  Checking $key"
         
-            # Check key existence in A.yml using has()
             if ! yq "has(\"$key\")" "$A" | grep -q true; then
                 echo "::error Key '$key' present in $B but missing in $A"
                 exit 1
@@ -88,5 +82,4 @@ runs:
             fi
         done
         
-        echo "All compared keys match!"
         exit 0
