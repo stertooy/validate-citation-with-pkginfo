@@ -120,5 +120,5 @@ if IsBound( info.Keywords ) and not IsEmpty( info.Keywords ) then
     od;
 fi;
 
-PrintTo( Filename( DirectoryCurrent(), "CITATION.cff" ), text );
+PrintTo( Filename( DirectoryCurrent(), "CITATION-generated.cff" ), text );
 QuitGap();
