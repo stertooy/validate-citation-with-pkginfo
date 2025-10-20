@@ -120,5 +120,6 @@ if IsBound( info.Keywords ) and not IsEmpty( info.Keywords ) then
     od;
 fi;
 
+SizeScreen([4096,64]); # Avoid unwanted newlines
 PrintTo( Filename( DirectoryCurrent(), "CITATION-generated.cff" ), text );
 QuitGap();
