@@ -26,24 +26,24 @@ runs:
           local jsonA="$1"
           local jsonB="$2"
         
-          typeB=$(echo "$jsonB" | jq -r 'type')
+          local typeB=$(echo "$jsonB" | jq -r 'type')
           case "$typeB" in
             object)
-              keys=$(echo "$jsonB" | jq -r 'keys[]')
+              local keys=$(echo "$jsonB" | jq -r 'keys[]')
               for k in $keys; do
-                valB=$(echo "$jsonB" | jq -c ".\"$k\"")
-                valA=$(echo "$jsonA" | jq -c ".\"$k\" // empty")
+                local valA=$(echo "$jsonA" | jq -c ".\"$k\" // empty")
+                local valB=$(echo "$jsonB" | jq -c ".\"$k\"")
                 recursive_match "$valA" "$valB" || return 1
               done
               ;;
             array)
-              lenB=$(echo "$jsonB" | jq 'length')
+              local lenA=$(echo "$jsonA" | jq 'length')
+              local lenB=$(echo "$jsonB" | jq 'length')
               for i in $(seq 0 $((lenB - 1))); do
-                elemB=$(echo "$jsonB" | jq -c ".[$i]")
-                matched=0
-                lenA=$(echo "$jsonA" | jq 'length')
+                local elemB=$(echo "$jsonB" | jq -c ".[$i]")
+                local matched=0
                 for j in $(seq 0 $((lenA - 1))); do
-                  elemA=$(echo "$jsonA" | jq -c ".[$j]")
+                  local elemA=$(echo "$jsonA" | jq -c ".[$j]")
                   recursive_match "$elemA" "$elemB" && { matched=1; break; }
                 done
                 if (( matched == 0 )); then
@@ -55,13 +55,13 @@ runs:
               [[ "$jsonA" == "$jsonB" ]] || return 1
               ;;
             *)
-              echo "::error Unknown type: $typeB"
               return 1
               ;;
           esac
           return 0
         }
-        
+
+        error=0
         keys=$(yq '.' "$B" | jq -r 'keys[]')
         for key in $keys; do
             # Ignore
@@ -69,17 +69,17 @@ runs:
             echo "  Checking $key"
         
             if ! yq "has(\"$key\")" "$A" | grep -q true; then
-                echo "::error Key '$key' present in $B but missing in $A"
-                exit 1
+                error=1
+                echo "::error::Key '$key' present in $B but missing in $A"
             fi
         
             valA=$(yq ".\"$key\"" "$A" | jq -c '.')
             valB=$(yq ".\"$key\"" "$B" | jq -c '.')
         
             if ! recursive_match "$valA" "$valB"; then
-                echo "::error Mismatch for key '$key': '$valA' vs '$valB'"
-                exit 1
+                error=1
+                echo "::error::Mismatch for key '$key': '$valA' vs '$valB'"
             fi
         done
         
-        exit 0
+        exit $error
